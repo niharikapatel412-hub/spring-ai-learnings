@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.reader.TextReader;
+import org.springframework.ai.transformer.splitter.TextSplitter;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -85,6 +86,17 @@ public class RagConfiguration {
                 .indexType(PgVectorStore.PgIndexType.HNSW)  // Fast similarity search
                 .initializeSchema(true)  // Creates table if not exists
                 .build();
+    }
+
+    @Bean
+    public TextSplitter textSplitter() {
+        return new TokenTextSplitter(
+                800,   // tokens per chunk
+                100,   // overlap between chunks
+                5,     // minimum chunk size
+                10000, // maximum chunk size
+                true   // keep separator
+        );
     }
 
 }
