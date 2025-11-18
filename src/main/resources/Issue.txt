@@ -1,0 +1,16 @@
+Issue faced during the development.
+
+1. Upload controller not handling large file uploads properly.
+   Solution: Added below paramatrs in application.properties
+    spring.servlet.multipart.max-file-size=200MB
+    spring.servlet.multipart.max-request-size=200MB
+
+2. The load api was taking too long to process the any other pdf than the article.pdf
+    Error logs :
+    "java.lang.IllegalArgumentException: Document outline (e.g. TOC) is null.
+     Make sure the PDF document has a table of contents (TOC).
+  Solution : Used PagePdfDocumentReader instead of ParagraphPdfDocumentReader.
+
+3. API took very long to process the pdf upload
+    Solution : Added @Async to the upload method in FileUploadController.java
+    and enabled async processing in main application class with @EnableAsync annotation.
