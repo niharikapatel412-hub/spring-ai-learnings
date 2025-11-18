@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicorn Store AI Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dev-dark': '#1a1a1a',
+                        'dev-accent-hover': '#4f46e5',
+                        'dev-secondary': '#3b82f6',
+                        'dev-text': '#e2e8f0',
+                        'dev-text-muted': '#94a3b8',
+                        'dev-border': '#2d3748',
+                        'dev-message-user': '#1e293b',
+                        'dev-message-ai': '#1e1e2d'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .chat-container {
+            height: calc(100vh - 180px);
+        }
+        .message-container {
+            height: calc(100vh - 280px);
+            overflow-y: auto;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background-color: #6366f1;
+            margin-left: 2px;
+            animation: blink 1s infinite;
+        }
+        /* Custom scrollbar for dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b3b3b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b4b4b;
+        }
+    </style>
+</head>
+<body class="bg-dev-darker min-h-screen text-dev-text">
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <header class="mb-8">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center">
+                <h1 class="text-3xl font-bold text-dev-accent">🦄 Unicorn Store</h1>
+            </div>
+        </div>
+        <p class="text-dev-text-muted mt-2">Experience real-time streaming responses from our magical assistant!</p>
+    </header>
+
+    <!-- Chat Interface -->
+    <div class="bg-dev-dark rounded-xl shadow-lg p-6 chat-container border border-dev-border flex flex-col">
+        <div class="message-container flex-grow mb-4" id="messageContainer">
+            <div class="flex mb-4">
+                <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
+                    <span class="text-lg">🦄</span>
+                </div>
+                <div class="bg-dev-message-ai rounded-lg p-3 max-w-3xl border border-dev-border">
+                    <p class="text-dev-text">Welcome to the Unicorn Store streaming chat! Watch as responses appear in real-time. How can I help you find your magical companion today?</p>
+                </div>
+            </div>
+            <!-- Messages will be added here dynamically -->
+        </div>
+
+        <!-- Input Area -->
+        <div class="border-t border-dev-border pt-4 mt-auto">
+            <form id="chatForm" class="flex w-full">
+                <input type="text" id="userInput" class="flex-grow bg-dev-darker border border-dev-border rounded-l-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-dev-accent text-dev-text" placeholder="Ask about our unicorns...">
+                <button type="submit" class="bg-dev-accent text-white px-6 py-3 rounded-r-lg hover:bg-dev-accent-hover transition">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- File Upload Section -->
+    <div class="bg-dev-dark rounded-xl shadow-lg p-6 mt-8 border border-dev-border">
+        <h2 class="text-xl font-bold text-dev-accent mb-4">Upload Files</h2>
+        <form id="fileUploadForm" class="flex flex-col space-y-4">
+            <input type="file" id="fileInput" class="bg-dev-darker border border-dev-border rounded-lg px-4 py-3 text-dev-text">
+            <button type="submit" class="bg-dev-accent text-white px-6 py-3 rounded-lg hover:bg-dev-accent-hover transition">Upload PDF</button>
+        </form>
+    </div>
+
+    <!-- Query Section -->
+    <div class="bg-dev-dark rounded-xl shadow-lg p-6 mt-8 border border-dev-border">
+        <h2 class="text-xl font-bold text-dev-accent mb-4">Query Vector Store</h2>
+        <form id="queryForm" class="flex w-full">
+            <input type="text" id="queryInput" class="flex-grow bg-dev-darker border border-dev-border rounded-l-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-dev-accent text-dev-text" placeholder="Ask a question...">
+            <button type="submit" class="bg-dev-accent text-white px-6 py-3 rounded-r-lg hover:bg-dev-accent-hover transition">Query</button>
+        </form>
+    </div>
+</div>
+
+<script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileUploadForm = document.getElementById('fileUploadForm');
+            const fileInput = document.getElementById('fileInput');
+            const queryForm = document.getElementById('queryForm');
+            const queryInput = document.getElementById('queryInput');
+
+            // Handle file upload
+            fileUploadForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const file = fileInput.files[0];
+                if (!file) {
+                    alert('Please select a file to upload.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch('/rag/load/documents', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.text();
+                    alert(result);
+                } catch (error) {
+                    console.error('Error uploading file:', error);
+                    alert('Failed to upload file.');
+                }
+            });
+
+            queryForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const question = queryInput.value.trim();
+                if (!question) {
+                    alert('Please enter a question.');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/rag/query?question=${encodeURIComponent(question)}`);
+                    const result = await response.text();
+                    alert(result);
+                } catch (error) {
+                    console.error('Error querying vector store:', error);
+                    alert('Failed to query vector store.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
