@@ -10,4 +10,9 @@ public class WebController {
     public String chatPage() {
         return "chat";
     }
+
+    @GetMapping("/ragweb")
+    public String ragweb() {
+        return "rag";
+    }
 }

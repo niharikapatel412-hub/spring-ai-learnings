@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicorn Store RAG Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dev-dark': '#1a1a1a',
+                        'dev-darker': '#0f172a',
+                        'dev-accent': '#6366f1',
+                        'dev-accent-hover': '#4f46e5',
+                        'dev-secondary': '#3b82f6',
+                        'dev-text': '#e2e8f0',
+                        'dev-text-muted': '#94a3b8',
+                        'dev-border': '#2d3748',
+                        'dev-message-user': '#1e293b',
+                        'dev-message-ai': '#1e1e2d'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .chat-container {
+            height: calc(100vh - 180px);
+        }
+        .message-container {
+            height: calc(100vh - 280px);
+            overflow-y: auto;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background-color: #6366f1;
+            margin-left: 2px;
+            animation: blink 1s infinite;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b3b3b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b4b4b;
+        }
+    </style>
+</head>
+<body class="bg-dev-darker min-h-screen text-dev-text">
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <header class="mb-8">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center">
+                <h1 class="text-3xl font-bold text-dev-accent">🦄 Unicorn Store RAG Chat</h1>
+            </div>
+        </div>
+        <p class="text-dev-text-muted mt-2">
+            Ask questions and watch the RAG assistant stream answers in real time.
+        </p>
+    </header>
+
+    <!-- Chat Interface -->
+    <div class="bg-dev-dark rounded-xl shadow-lg p-6 chat-container border border-dev-border flex flex-col">
+        <div class="message-container flex-grow mb-4" id="messageContainer">
+            <!-- Initial assistant message -->
+            <div class="flex mb-4">
+                <div class="w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3">
+                    <span class="text-lg">🦄</span>
+                </div>
+                <div class="bg-dev-message-ai rounded-lg p-3 max-w-3xl border border-dev-border">
+                    <p class="text-dev-text">
+                        Welcome to the Unicorn Store RAG chat! I can answer questions using our document knowledge base.
+                        What would you like to know today?
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="border-t border-dev-border pt-4 mt-auto">
+            <form id="chatForm" class="flex w-full">
+                <input
+                        type="text"
+                        id="userInput"
+                        class="flex-grow bg-dev-darker border border-dev-border rounded-l-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-dev-accent text-dev-text"
+                        placeholder="Ask a question about your documents..."
+                        autocomplete="off"
+                >
+                <button
+                        type="submit"
+                        id="sendButton"
+                        class="bg-dev-accent text-white px-6 py-3 rounded-r-lg hover:bg-dev-accent-hover transition"
+                >
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const chatForm = document.getElementById('chatForm');
+        const userInput = document.getElementById('userInput');
+        const messageContainer = document.getElementById('messageContainer');
+        const sendButton = document.getElementById('sendButton');
+
+        function scrollToBottom() {
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+
+        function createUserMessageElement(text) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex mb-4 justify-end';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'bg-dev-message-user rounded-lg p-3 max-w-3xl border border-dev-border';
+
+            const p = document.createElement('p');
+            p.className = 'text-dev-text';
+            p.textContent = text;
+
+            bubble.appendChild(p);
+            wrapper.appendChild(bubble);
+
+            return wrapper;
+        }
+
+        function createAssistantMessageElement() {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex mb-4';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'w-10 h-10 rounded-full bg-dev-accent bg-opacity-20 flex items-center justify-center mr-3';
+            avatar.innerHTML = '<span class="text-lg">🦄</span>';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'bg-dev-message-ai rounded-lg p-3 max-w-3xl border border-dev-border';
+
+            const p = document.createElement('p');
+            p.className = 'text-dev-text';
+            p.innerHTML = ''; // will be filled as we stream
+
+            const cursor = document.createElement('span');
+            cursor.className = 'cursor';
+
+            bubble.appendChild(p);
+            bubble.appendChild(cursor);
+            wrapper.appendChild(avatar);
+            wrapper.appendChild(bubble);
+
+            return { wrapper, textElement: p, cursorElement: cursor };
+        }
+
+        async function sendMessage(question) {
+            // Add user message to chat
+            const userMessage = createUserMessageElement(question);
+            messageContainer.appendChild(userMessage);
+
+            // Add assistant message placeholder
+            const { wrapper, textElement, cursorElement } = createAssistantMessageElement();
+            messageContainer.appendChild(wrapper);
+            scrollToBottom();
+
+            // Disable input while streaming
+            userInput.value = '';
+            userInput.disabled = true;
+            sendButton.disabled = true;
+            sendButton.textContent = 'Thinking...';
+
+            try {
+                const response = await fetch('/api/rag/chat/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt: question })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let done = false;
+
+                while (!done) {
+                    const { value, done: doneReading } = await reader.read();
+                    done = doneReading;
+
+                    if (value) {
+                        const chunk = decoder.decode(value, { stream: !doneReading });
+                        // Append streamed chunk
+                        textElement.textContent += chunk;
+                        scrollToBottom();
+                    }
+                }
+            } catch (error) {
+                console.error('Error calling chat stream API:', error);
+                textElement.textContent += '\n\n⚠️ Sorry, something went wrong while contacting the server.';
+            } finally {
+                // Remove cursor and re-enable input
+                cursorElement.remove();
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send';
+                userInput.focus();
+                scrollToBottom();
+            }
+        }
+
+        chatForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const question = userInput.value.trim();
+            if (!question) {
+                return;
+            }
+            sendMessage(question);
+        });
+
+        // Optional: press Enter to send, Shift+Enter for newline
+        userInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+    });
+</script>
+</body>
+</html>
