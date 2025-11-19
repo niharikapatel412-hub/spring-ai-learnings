@@ -44,7 +44,7 @@ public class RagConfiguration {
         );
     }
 
-    @Bean(name = "fileVectorStore")
+    @Bean(name = "simpleVectorStore")
     SimpleVectorStore simpleVectorStore(EmbeddingModel embeddingModel,
                                         TokenTextSplitter textSplitter) throws IOException {
         var simpleVectorStore = SimpleVectorStore.builder(embeddingModel).build();
