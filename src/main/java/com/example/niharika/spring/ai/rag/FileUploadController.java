@@ -34,7 +34,7 @@ import java.util.stream.DoubleStream;
  * to enable querying using the RAG approach.
  */
 @RestController
-@RequestMapping("/rag")
+@RequestMapping("/file")
 public class FileUploadController {
 
     private static final Logger log = LoggerFactory.getLogger(FileUploadController.class);
