@@ -92,7 +92,7 @@ mvn spring-boot:run
 ./gradlew bootRun
 ```
 
-## 📚 Topics Covered
+## 📚 Topics to be Covered
 
 ### ✅ Chat Models
 - Basic chat completions
